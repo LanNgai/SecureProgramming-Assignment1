@@ -110,6 +110,25 @@ def download():
 def download_page():
     return render_template('download.html')
 
+# ---------------Function for Masking Card number---------------
+# This shows the last three (by default) digits of the card number.
+def mask_card_number(card_number, digits_to_show=3):
+    card_str = str(card_number).replace(" ", "").replace("-", "")
+    if len(card_str) <= digits_to_show:
+        return card_str
+    return "*" * (len(card_str) - digits_to_show) + card_str[-digits_to_show:]
+
+# ---------------Function for Masking Expiry Date---------------
+# This masks the expiry date completely
+def mask_expiry(expiry_date):
+    if not expiry_date:
+        return "**/**"
+    # Convert to string and mask
+    expiry_str = str(expiry_date)
+    if '/' in expiry_str:
+        parts = expiry_str.split('/')
+        return "**/**"
+    return "****"  # If format is MMYY
 
 @app.route('/profile/<int:user_id>', methods=['GET'])
 def profile(user_id):
@@ -119,7 +138,29 @@ def profile(user_id):
     if user:
         query_cards = text(f"SELECT * FROM carddetail WHERE id = {user_id}")
         cards = db.session.execute(query_cards).fetchall()
-        return render_template('profile.html', user=user, cards=cards)
+        
+        #---------------Credential Leaking Remediation---------------
+        # Mask sensitive card information
+        masked_cards = []
+        for card in cards:
+            card_dict = dict(card._mapping)
+            
+            # Mask card number
+            if 'cardno' in card_dict:
+                card_dict['cardno'] = mask_card_number(card_dict['cardno'], 3)
+            
+            # Mask expiry date
+            if 'expiry' in card_dict or 'expiry_date' in card_dict:
+                expiry_field = 'expiry' if 'expiry' in card_dict else 'expiry_date'
+                card_dict[expiry_field] = mask_expiry(card_dict[expiry_field])
+            
+            # CVV should NOT exist in database - but remove if present
+            if 'cvv' in card_dict:
+                card_dict['cvv'] = "***"  # Remove completely - should not be stored so I have replaced it with "***"
+                
+            masked_cards.append(card_dict)
+    
+        return render_template('profile.html', user=user, cards=masked_cards)
     else:
         return "User not found or unauthorized access.", 403
 from flask import request
