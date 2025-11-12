@@ -140,8 +140,10 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        query = text(f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'")
-        user = db.session.execute(query).fetchone()
+        # SQL Injection Remediation:
+        # Use parameterized query with :parameter syntax
+        query = text("SELECT * FROM users WHERE username = :username AND password = :password")
+        user = db.session.execute(query, {'username': username, 'password': password}).fetchone()
 
         if user:
             session['user_id'] = user.id
