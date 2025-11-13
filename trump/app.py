@@ -189,7 +189,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        # SQL Injection Remediation:
+        # ---------------SQL Injection Remediation:---------------
         # Use parameterized query with :parameter syntax
         query = text("SELECT * FROM users WHERE username = :username AND password = :password")
         user = db.session.execute(query, {'username': username, 'password': password}).fetchone()
