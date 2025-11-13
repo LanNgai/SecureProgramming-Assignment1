@@ -135,6 +135,14 @@ def profile(user_id):
     query_user = text(f"SELECT * FROM users WHERE id = {user_id}")
     user = db.session.execute(query_user).fetchone()
 
+# ---------------IDOR Remediation: Check authorization---------------
+    # Verify the logged-in user matches the requested profile
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if session['user_id'] != user_id:
+        return redirect(url_for('profile', user_id=session['user_id']))
+
     if user:
         query_cards = text(f"SELECT * FROM carddetail WHERE id = {user_id}")
         cards = db.session.execute(query_cards).fetchall()
